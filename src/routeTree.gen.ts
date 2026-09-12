@@ -16,6 +16,8 @@ import { Route as MoreRouteImport } from './routes/more'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as UpcomingRouteImport } from './routes/upcoming'
 import { Route as UpdatesRouteImport } from './routes/updates'
+import { Route as ReaderWorkIdRouteImport } from './routes/reader.$workId'
+import { Route as SeriesWorkIdRouteImport } from './routes/series.$workId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +54,16 @@ const UpdatesRoute = UpdatesRouteImport.update({
   path: '/updates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReaderWorkIdRoute = ReaderWorkIdRouteImport.update({
+  id: '/reader/$workId',
+  path: '/reader/$workId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeriesWorkIdRoute = SeriesWorkIdRouteImport.update({
+  id: '/series/$workId',
+  path: '/series/$workId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +73,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/upcoming': typeof UpcomingRoute
   '/updates': typeof UpdatesRoute
+  '/reader/$workId': typeof ReaderWorkIdRoute
+  '/series/$workId': typeof SeriesWorkIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +84,8 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/upcoming': typeof UpcomingRoute
   '/updates': typeof UpdatesRoute
+  '/reader/$workId': typeof ReaderWorkIdRoute
+  '/series/$workId': typeof SeriesWorkIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +96,8 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/upcoming': typeof UpcomingRoute
   '/updates': typeof UpdatesRoute
+  '/reader/$workId': typeof ReaderWorkIdRoute
+  '/series/$workId': typeof SeriesWorkIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +109,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upcoming'
     | '/updates'
+    | '/reader/$workId'
+    | '/series/$workId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +120,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upcoming'
     | '/updates'
+    | '/reader/$workId'
+    | '/series/$workId'
   id:
     | '__root__'
     | '/'
@@ -109,6 +131,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upcoming'
     | '/updates'
+    | '/reader/$workId'
+    | '/series/$workId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +143,8 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   UpcomingRoute: typeof UpcomingRoute
   UpdatesRoute: typeof UpdatesRoute
+  ReaderWorkIdRoute: typeof ReaderWorkIdRoute
+  SeriesWorkIdRoute: typeof SeriesWorkIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +198,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UpdatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reader/$workId': {
+      id: '/reader/$workId'
+      path: '/reader/$workId'
+      fullPath: '/reader/$workId'
+      preLoaderRoute: typeof ReaderWorkIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/series/$workId': {
+      id: '/series/$workId'
+      path: '/series/$workId'
+      fullPath: '/series/$workId'
+      preLoaderRoute: typeof SeriesWorkIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +223,8 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   UpcomingRoute: UpcomingRoute,
   UpdatesRoute: UpdatesRoute,
+  ReaderWorkIdRoute: ReaderWorkIdRoute,
+  SeriesWorkIdRoute: SeriesWorkIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
