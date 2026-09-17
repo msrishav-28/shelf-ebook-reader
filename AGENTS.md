@@ -49,33 +49,30 @@ The UI currently still says **Shelf**. Do not silently rename the wordmark. A re
 
 ---
 
-## 2. What the code actually does today (Phase 0 chrome, not Phase 0 readers)
+## 2. What the code actually does today (Phase 0 signed off)
 
-This is a **clickable Mihon-like shell** with **in-memory fixture data**. It is not yet a working library or reader.
+This is a **working five-tab PWA shell with real local readers and IndexedDB persistence**. Phase 0 has been completed, typechecked, built, and verified via browser testing.
 
 A person using the running app can:
 
-- Open five main tabs on phone (bottom nav) and desktop (left rail).
-- See a cover grid on Library, filter/sort/display in a bottom sheet, search titles.
-- Open a series page and a fake paged reader (placeholder art, tap zones, slider).
-- See History rows (heart and delete are local React state; they reset on refresh).
-- See Updates empty state and an Upcoming calendar (hard-coded August 2026 demo dots).
-- See Browse Sources / Connectors / Move lists (not wired to real servers).
-- Toggle Downloaded-only and Incognito on More (state does **not** affect Library or History).
-- Open Settings group labels (rows do nothing).
+- Open five main tabs on phone (bottom nav) and desktop (left rail): Library, Updates, History, Browse, More.
+- Open and read real local **PDF**, **EPUB**, and **CBZ** publications via the Browse "Local files" picker or seeded public domain samples.
+- Resume reading: locations (`pdf_page`, `epub_cfi`, `image_page`) are persisted in Dexie IndexedDB with debounced writes (500ms) and restored upon reload or clicking "Resume" from Series.
+- See real ingested works on Library grid and Series details.
+- Hide the five-tab navigation while reading (full-viewport reading experience).
+- Access public domain test fixtures from `public/fixtures/` (`sample.pdf`, `sample.epub`, `sample.cbz`).
+- Filter/sort/display bottom sheet on Library.
 
 A person **cannot** yet:
 
-- Open a real CBZ, EPUB, or PDF.
-- Persist progress, history, settings, or connectors.
-- Talk to Komga / Kavita / OPDS.
-- Install as a PWA.
-- Annotate text or pages.
-- Sign in or invite anyone.
+- Ingest history events permanently or pause them with Incognito (Phase 1).
+- Connect to remote Komga/Kavita/OPDS instances (Phase 1).
+- Export or import `suvadi-backup.json` (Phase 1).
+- Filter Library by Downloaded-only toggle (Phase 1).
+- Annotate text or comic panels (Phase 1b / Phase 2).
+- Share libraries with a circle (Phase 3).
 
-There is **no database**, **no auth**, **no tests**, **no CI**, **no fixtures/** folder.
-
-Seed titles in `src/lib/shelf-data.ts` are **fictional placeholders** for layout. They are not licensed publications and must not be shipped as if they were a catalog.
+There is **no remote server auth**, **no cloud sync**, and **no publication proxying**.
 
 ---
 
@@ -93,10 +90,12 @@ Seed titles in `src/lib/shelf-data.ts` are **fictional placeholders** for layout
 | Icons           | lucide-react                                                                                               |
 | Bundler         | Vite 8                                                                                                     |
 | Deploy adapter  | Nitro 3 (vite plugin in `vite.config.ts`)                                                                  |
+| Persistence     | Dexie 4.x (`dexie` IndexedDB schema v1)                                                                    |
+| Reader engines  | `pdfjs-dist` 4.x (PDF worker), `foliate-js` 1.0.1 (EPUB), `@zip.js/zip.js` 2.7.x (CBZ)                    |
 | Lint / format   | ESLint 9 + Prettier                                                                                        |
 | Path alias      | `@/*` → `./src/*`                                                                                          |
 
-**Not installed**, despite the developer sheet freeze: pnpm, Zustand, Dexie, vite-plugin-pwa, pdfjs-dist, foliate-js, @zip.js/zip.js, Vitest, Playwright, Temporal.
+**Not installed**, per charter phase freeze: pnpm (Bun pinned), Zustand (Dexie is active store), vite-plugin-pwa (manifest-only gap in Phase 0), Vitest, Playwright, Temporal.
 
 **Do not add Next.js, SvelteKit, Axios, JSZip, or a content proxy.** Those are rejected in the charter.
 
@@ -110,6 +109,8 @@ Seed titles in `src/lib/shelf-data.ts` are **fictional placeholders** for layout
 shelf-ebook-reader-main/
   AGENTS.md                 ← this file (living)
   README.md                 ← human start + legal line
+  TRACKER.md                ← unfinished work / phase gate checklist
+  PHASE_0.md                ← Phase 0 specification & sign-off
   package.json
   bun.lock
   bunfig.toml
@@ -117,26 +118,33 @@ shelf-ebook-reader-main/
   tsconfig.json
   eslint.config.js
   components.json           ← shadcn config; CSS at src/styles.css
-  public/                   ← favicon.ico, robots.txt only. No books.
+  public/                   ← favicon.ico, robots.txt, manifest.webmanifest
+    fixtures/               ← public domain sample publications (sample.pdf, sample.epub, sample.cbz)
+  scripts/
+    generate-fixtures.ts    ← script to regenerate public domain test fixtures
   src/
     router.tsx              ← getRouter(); QueryClient in router context
     start.ts                ← CSRF middleware for server functions + SSR error page
     server.ts               ← optional server entry; turns swallowed h3 500 JSON into HTML
     routeTree.gen.ts        ← generated; never edit
     styles.css              ← Tailwind + design tokens
+    domain/                 ← Work, Rendition, Location, Locator types & format detection
+    db/                     ← Dexie schema v1, repositories, location debounce (500ms)
+    readers/
+      pdf/                  ← pdf.js viewer engine with canvas rendering and page caching
+      epub/                 ← foliate-js integration via foliate-view custom element
+      images/               ← @zip.js/zip.js comic archive extractor and viewer
     lib/
-      shelf-data.ts         ← in-memory fixtures
+      shelf-data.ts         ← browse source definitions (fake catalog titles stripped)
       utils.ts              ← cn()
       error-capture.ts      ← last-error capture for SSR
       error-page.ts         ← HTML 500 page
-    components/shelf/       ← product chrome
-    components/ui/          ← shadcn primitives (most unused)
+    components/shelf/       ← product chrome (AppShell, CoverCard, LibraryFilterSheet, etc.)
+    components/ui/          ← shadcn primitives
     hooks/use-mobile.tsx    ← unused by product screens
     routes/                 ← file routes
   suvadi-dev-pack/          ← product charter (not the live tree)
 ```
-
-There is no `src/domain/`, `src/db/`, `src/connectors/`, `src/readers/`, `src/pwa/`, `fixtures/`, `apps/web/`, or `.env.example`.
 
 ---
 
@@ -193,15 +201,19 @@ Everything else under `src/components/ui/` is unused kit. Do not delete it in dr
 
 ## 7. Data and state
 
+Dexie schema v1 (`src/db/schema.ts`, database name `suvadi`):
+- `works`: id, title, authors, coverPath, createdAt, updatedAt
+- `renditions`: id, workId, kind, source, format, filename, sizeBytes, createdAt
+- `locations`: id, renditionId, kind, locator, progressPct, updatedAt
+- `fileBlobs`: id, blob, mimeType
+
+Location updates (`src/db/locations.ts`) are debounced to 500ms to avoid IndexedDB thrash during rapid page turns or text scrolling.
+
 `src/lib/shelf-data.ts` exports:
+- `sources`, `connectors`, `moveSources` (browse navigation definitions)
+- In-memory fake publication catalog was stripped in Phase 0.
 
-- `library: Work[]`
-- `history: HistoryEvent[]`
-- `updates: UpdateRow[]` (empty)
-- `sources`, `connectors`, `moveSources`
-- `chaptersFor(work)`
-
-There is no Dexie, no IndexedDB, no OPFS, no secrets table. History heart/delete and More toggles are `useState` only.
+History and More settings toggles remain in React state until Phase 1 wires them to Dexie tables.
 
 When persistence is added: follow `suvadi-dev-pack/suvadi-docs/03_DATA_MODEL.md`. Do not invent a second model. API keys go in a secrets store, never in the URL after paste, never in default backup, never in logs.
 
@@ -264,14 +276,12 @@ Root `01_PRODUCT_BRIEF.md` and `05_ENGINEERING_KICKOFF.md` are **pointers** to t
 
 | Phase | Charter                                                | Now                                         |
 | ----- | ------------------------------------------------------ | ------------------------------------------- |
-| 0     | Five-tab PWA + real PDF/EPUB/CBZ + Dexie location      | Five-tab UI + fake reader + memory fixtures |
-| 1     | Library persistence, History, More, Komga, backup JSON | Layout only                                 |
+| 0     | Five-tab PWA + real PDF/EPUB/CBZ + Dexie location      | **Completed & signed off** (2026-09-17)     |
+| 1     | Library persistence, History, More, Komga, backup JSON | Next slice (planning)                       |
 | 1b    | Solo highlight + text note                             | Not started                                 |
 | 2     | Voice/image notes, OPFS                                | Not started                                 |
 | 3     | Invites, sync box                                      | Contract only (`04_SYNC_API.md`)            |
 | 4     | Kavita, OPDS, Upcoming metadata, Move identity         | Upcoming calendar chrome only               |
-
-Next honest slice, when asked: real local file open + persist locator. Do not start Komga, auth, or circle sync before that. Do not add a pirate source tile. Do not cache whole books in a service worker.
 
 Module rule from kickoff, when those folders exist:
 
@@ -286,9 +296,9 @@ Module rule from kickoff, when those folders exist:
 
 1. Survey the tree (or re-read this file and the files you will touch) before editing.
 2. Do not add Lovable packages, `.lovable/`, `window.__lovable*`, or editor error bridges.
-3. Do not rewrite git history.
+3. Do not rewrite git history without explicit user instruction.
 4. Do not commit secrets, `.env` with real values, or copyrighted manga/fixtures.
-5. Fixtures, when added, must be public-domain or clearly licensed, under `fixtures/`.
+5. Fixtures, when added, must be public-domain or clearly licensed, under `fixtures/` or `public/fixtures/`.
 6. No `any` without a one-line reason and a removal condition.
 7. Errors shown to humans are sentences, not stacks.
 8. Hiding a button is not authorization. There is no auth yet; do not fake it.
@@ -310,8 +320,6 @@ bun run dev
 
 Lint: `bun run lint`. Format: `bun run format`. Build: `bun run build`.
 
-There is no test script.
-
 Click-path: open the dev URL → Library covers → a cover → Resume → tap center to toggle reader chrome → back → History / Browse / More.
 
 ---
@@ -323,3 +331,4 @@ Click-path: open the dev URL → Library covers → a cover → Resume → tap c
 | 2026-08-25 | Charter: web PWA, React+Vite+TS, Komga first, no shadow-library connectors (see developer sheet)                                                                                                                  |
 | 2026-09-08 | Charter pack renamed product to Suvadi; UI still Shelf                                                                                                                                                            |
 | 2026-09-12 | Removed Lovable editor coupling. Vite uses public TanStack Start + Nitro + Tailwind plugins. This file is the living code map. Package name `shelf`. Package manager remains Bun until a freeze change is logged. |
+| 2026-09-17 | Phase 0 signed off. Added Dexie v1 schema, PDF.js, foliate-js, and zip.js readers. Stripped in-memory fake catalog. Pushed structured 7-commit milestone timeline to GitHub with legacy backup.                  |
